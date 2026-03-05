@@ -1,203 +1,243 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, StyleSheet, ScrollView, Alert, TouchableOpacity, Switch } from 'react-native';
+import React, { useState } from 'react';
+import { doc, updateDoc, setDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { View, Text, TextInput, StyleSheet, ScrollView, Alert, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
 import { db } from '../firebaseConfig';
-import { doc, updateDoc, addDoc, setDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth'; // NOVO: Para pegar o usuário logado
 
 export default function ProductFormScreen({ route, navigation }) {
   const { produto, patrimonioScaneado, modo } = route.params || {};
+  const isEditing = modo === 'editar';
 
-  // Estados Base
+  // Autenticação (Para registrar quem editou)
+  const auth = getAuth();
+  const usuarioLogado = auth.currentUser?.email || 'Usuario Desconhecido';
+
+  // 1. Estados Base
   const [patrimonio, setPatrimonio] = useState(produto?.patrimonio || patrimonioScaneado || '');
-  const [tipo, setTipo] = useState(produto?.tipo || 'Computador'); // Padrão
+
+  // 2. Lógica de Tipo com a opção "Outro"
+  const [tipo, setTipo] = useState(produto?.tipo || 'Computador');
+  const [tipoOutro, setTipoOutro] = useState(''); // Guarda o texto caso seja "Outro"
+
   const [marca, setMarca] = useState(produto?.marca || '');
   const [modelo, setModelo] = useState(produto?.modelo || '');
+
+  // 3. Status Fixo
   const [status, setStatus] = useState(produto?.status || 'Disponível');
+
   const [local, setLocal] = useState(produto?.local || '');
   const [obs, setObs] = useState(produto?.observacao || '');
 
-  // Estados Específicos de Hardware (Computador/Notebook)
+  // Estados de Hardware
   const [processador, setProcessador] = useState(produto?.processador || '');
   const [memoria, setMemoria] = useState(produto?.memoria || '');
   const [armazenamento, setArmazenamento] = useState(produto?.armazenamento || '');
 
-  const isEditing = modo === 'editar';
-
-  // Lista de Tipos Comuns
-  const tiposComuns = ["Computador", "Notebook", "Monitor", "Estabilizador", "Periférico"];
+  // Listas Fixas
+  const tiposComuns = ["Computador", "Notebook", "Monitor", "Estabilizador", "Periférico", "Outro"];
+  const statusComuns = ["Disponível", "Em uso", "Emprestado", "Em manutenção", "Defeito", "Para Descarte"];
 
   const handleSave = async () => {
-    if (!tipo || !modelo || !local) {
-      Alert.alert("Atenção", "Preencha pelo menos Tipo, Modelo e Local.");
+    // Validação do Tipo Final
+    const tipoFinal = tipo === 'Outro' ? tipoOutro : tipo;
+
+    if (!tipoFinal || !modelo || !local || !patrimonio) {
+      Alert.alert("Atenção", "Preencha Patrimônio, Tipo, Modelo e Local.");
       return;
     }
 
     const dadosParaSalvar = {
       patrimonio,
-      tipo,
+      tipo: tipoFinal,
       marca,
       modelo,
       status,
       local,
       observacao: obs,
-      ultimaEdicao: serverTimestamp()
+      ultimaEdicao: serverTimestamp(),
+      editadoPor: usuarioLogado // Ponto 5 resolvido aqui na gravação!
     };
 
-    // Só adiciona campos de hardware se for PC ou Notebook
-    if (tipo === "Computador" || tipo === "Notebook") {
+    if (tipoFinal === "Computador" || tipoFinal === "Notebook") {
       dadosParaSalvar.processador = processador;
       dadosParaSalvar.memoria = memoria;
       dadosParaSalvar.armazenamento = armazenamento;
     }
 
     try {
-      // 1. Defina o ID do documento ANTES do if/else
-      // Se estiver editando, usa o ID do produto. Se for novo, usa o Patrimônio digitado.
       const idDoDocumento = isEditing ? produto.id : patrimonio;
-      
-      // Validação de segurança: Não deixa salvar se não tiver ID
-      if (!idDoDocumento) {
-        Alert.alert("Erro", "O Patrimônio é obrigatório para salvar.");
-        return;
-      }
-
-      // 2. Cria a referência para o banco
       const docRef = doc(db, "products", idDoDocumento);
 
       if (isEditing) {
-        // ATUALIZAR (Update)
-        // updateDoc só atualiza os campos que mudaram
+        // LÓGICA DE AUDITORIA (MOVIMENTAÇÃO E STATUS)
+        const mudouLocal = produto.local !== local;
+        const mudouStatus = produto.status !== status;
+
+        // Se mudou de sala ou mudou de status (ex: quebrou), registra no histórico!
+        if (mudouLocal || mudouStatus) {
+          const logMovimentacao = {
+            patrimonio: patrimonio,
+            modelo: modelo,
+            tipo: tipoFinal,
+            localAnterior: produto.local,
+            localNovo: local,
+            statusAnterior: produto.status,
+            statusNovo: status,
+            data: serverTimestamp(),
+            usuario: usuarioLogado,
+            tipoAcao: mudouLocal ? 'Transferência de Local' : 'Mudança de Status'
+          };
+
+          // Grava o recibo na nova coleção "movimentacoes"
+          await addDoc(collection(db, "movimentacoes"), logMovimentacao);
+        }
+
+        // Atualiza o equipamento normalmente
         await updateDoc(docRef, dadosParaSalvar);
         Alert.alert("Atualizado", "Item editado com sucesso!");
+
       } else {
-        // NOVO (Set)
-        // Adiciona data de criação
+        // NOVO CADASTRO
         dadosParaSalvar.dataCriacao = serverTimestamp();
-        
-        // setDoc escreve/sobrescreve naquele endereço exato (ID = Patrimônio)
         await setDoc(docRef, dadosParaSalvar);
+        
+        // (Opcional) Registrar a criação no histórico também
+        await addDoc(collection(db, "movimentacoes"), {
+            patrimonio: patrimonio,
+            modelo: modelo,
+            localNovo: local,
+            statusNovo: status,
+            data: serverTimestamp(),
+            usuario: usuarioLogado,
+            tipoAcao: 'Cadastro Inicial'
+        });
+
         Alert.alert("Cadastrado", "Item salvo no ID: " + patrimonio);
       }
       
       navigation.goBack();
       
     } catch (error) {
-      console.error("Erro ao salvar:", error);
-      Alert.alert("Erro", "Falha ao salvar. Verifique se o patrimônio está vazio ou repetido.");
+      console.error(error);
+      Alert.alert("Erro", "Falha ao salvar. Verifique sua conexão.");
     }
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.headerTitle}>
-        {isEditing ? `Editando: ${patrimonio}` : "Novo Cadastro"}
-      </Text>
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: '#f5f5f5' }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <ScrollView contentContainerStyle={styles.container}>
+        <Text style={styles.headerTitle}>
+          {isEditing ? `Editando Ativo` : "Novo Cadastro"}
+        </Text>
 
-      {/* SELEÇÃO DE TIPO (CHIPS) */}
-      <Text style={styles.label}>O que é esse equipamento?</Text>
-      <View style={styles.chipContainer}>
-        {tiposComuns.map((t) => (
-          <TouchableOpacity 
-            key={t} 
-            style={[styles.chip, tipo === t && styles.chipSelected]}
-            onPress={() => setTipo(t)}
-          >
-            <Text style={[styles.chipText, tipo === t && styles.chipTextSelected]}>{t}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-      
-      {/* Campo Tipo Manual (caso não seja nenhum dos botões acima) */}
-      <TextInput 
-        style={styles.inputSmall} 
-        value={tipo} 
-        onChangeText={setTipo} 
-        placeholder="Ou digite outro tipo..."
-      />
-
-      {/* CAMPOS COMUNS (Aparecem para todos) */}
-      <View style={styles.section}>
-        <TextInput 
-          style={styles.input} 
-          placeholder="Marca (Ex: Dell, HP)" 
-          value={marca} onChangeText={setMarca} 
-        />
-        <TextInput 
-          style={styles.input} 
-          placeholder="Modelo (Ex: Optiplex 3050)" 
-          value={modelo} onChangeText={setModelo} 
-        />
-        <TextInput 
-          style={styles.input} 
-          placeholder="Local (Ex: M220, Almoxarifado)" 
-          value={local} onChangeText={setLocal} 
-        />
-        <TextInput 
-          style={styles.input} 
-          placeholder="Status (Ex: Em Uso, Defeito)" 
-          value={status} onChangeText={setStatus} 
-        />
-      </View>
-
-      {/* CAMPOS CONDICIONAIS (Só aparecem se for PC/Notebook) */}
-      {(tipo === "Computador" || tipo === "Notebook") && (
-        <View style={styles.hardwareSection}>
-          <Text style={styles.sectionTitle}>Configuração de Hardware</Text>
-          <TextInput 
-            style={styles.input} 
-            placeholder="Processador (Ex: i5 10th)" 
-            value={processador} onChangeText={setProcessador} 
+        {/* PONTO 4: CAMPO DE PATRIMÔNIO (Travado se for edição) */}
+        <View style={styles.section}>
+          <Text style={styles.label}>Nº do Patrimônio *</Text>
+          <TextInput
+            style={[styles.input, isEditing && styles.inputDisabled]}
+            placeholder="Ex: 016266"
+            value={patrimonio}
+            onChangeText={setPatrimonio}
+            editable={!isEditing} // Não deixa mudar o patrimônio na edição, pois ele é o ID no banco
+            keyboardType="numeric"
           />
-          <View style={styles.row}>
-            <TextInput 
-              style={[styles.input, {flex: 1, marginRight: 5}]} 
-              placeholder="RAM (Ex: 8GB)" 
-              value={memoria} onChangeText={setMemoria} 
-            />
-            <TextInput 
-              style={[styles.input, {flex: 1, marginLeft: 5}]} 
-              placeholder="Disco (Ex: SSD 240)" 
-              value={armazenamento} onChangeText={setArmazenamento} 
-            />
-          </View>
         </View>
-      )}
 
-      <Text style={styles.label}>Observações</Text>
-      <TextInput 
-        style={[styles.input, {height: 80}]} 
-        multiline 
-        placeholder="Detalhes adicionais..." 
-        value={obs} onChangeText={setObs} 
-      />
+        {/* PONTO 3: SELEÇÃO DE TIPO BLINDADA */}
+        <Text style={styles.label}>Equipamento *</Text>
+        <View style={styles.chipContainer}>
+          {tiposComuns.map((t) => (
+            <TouchableOpacity
+              key={t}
+              style={[styles.chip, tipo === t && styles.chipSelected]}
+              onPress={() => setTipo(t)}
+            >
+              <Text style={[styles.chipText, tipo === t && styles.chipTextSelected]}>{t}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
 
-      <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-        <Text style={styles.saveButtonText}>SALVAR</Text>
-      </TouchableOpacity>
+        {/* Condicional para o Tipo "Outro" */}
+        {tipo === 'Outro' && (
+          <TextInput
+            style={styles.inputWarning}
+            value={tipoOutro}
+            onChangeText={setTipoOutro}
+            placeholder="Especifique o equipamento..."
+            autoFocus
+          />
+        )}
 
-    </ScrollView>
+        {/* PONTO 2: SELEÇÃO DE STATUS BLINDADA */}
+        <Text style={[styles.label, { marginTop: 10 }]}>Status do Equipamento *</Text>
+        <View style={styles.chipContainer}>
+          {statusComuns.map((s) => (
+            <TouchableOpacity
+              key={s}
+              style={[styles.chip, status === s && styles.statusSelected]}
+              onPress={() => setStatus(s)}
+            >
+              <Text style={[styles.chipText, status === s && styles.chipTextSelected]}>{s}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* CAMPOS COMUNS */}
+        <View style={styles.section}>
+          <Text style={styles.label}>Detalhes da Máquina</Text>
+          <TextInput style={styles.input} placeholder="Marca (Ex: Dell, HP)" value={marca} onChangeText={setMarca} />
+          <TextInput style={styles.input} placeholder="Modelo (Ex: Optiplex 3050) *" value={modelo} onChangeText={setModelo} />
+          <TextInput style={styles.input} placeholder="Localização Atual (Ex: M220) *" value={local} onChangeText={setLocal} />
+        </View>
+
+        {/* CONDICIONAIS DE HARDWARE */}
+        {(tipo === "Computador" || tipo === "Notebook") && (
+          <View style={styles.hardwareSection}>
+            <Text style={styles.sectionTitle}>Configuração de Hardware</Text>
+            <TextInput style={styles.input} placeholder="Processador" value={processador} onChangeText={setProcessador} />
+            <View style={styles.row}>
+              <TextInput style={[styles.input, { flex: 1, marginRight: 5 }]} placeholder="RAM" value={memoria} onChangeText={setMemoria} />
+              <TextInput style={[styles.input, { flex: 1, marginLeft: 5 }]} placeholder="Armazenamento" value={armazenamento} onChangeText={setArmazenamento} />
+            </View>
+          </View>
+        )}
+
+        <Text style={styles.label}>Observações</Text>
+        <TextInput style={[styles.input, { height: 80 }]} multiline placeholder="Motivo do defeito, para quem foi emprestado..." value={obs} onChangeText={setObs} />
+
+        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+          <Text style={styles.saveButtonText}>SALVAR NO ESTOQUE</Text>
+        </TouchableOpacity>
+
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { padding: 20, backgroundColor: '#f5f5f5' },
   headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#00184F', marginBottom: 15, textAlign: 'center' },
-  label: { fontSize: 14, color: '#666', marginBottom: 5, fontWeight: '600' },
-  
-  // Estilo dos Chips
+  label: { fontSize: 14, color: '#666', marginBottom: 5, fontWeight: 'bold' },
+
   chipContainer: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 10 },
-  chip: { backgroundColor: '#e0e0e0', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 20, marginRight: 8, marginBottom: 8 },
+  chip: { backgroundColor: '#e0e0e0', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, marginRight: 8, marginBottom: 8 },
   chipSelected: { backgroundColor: '#00184F' },
+  statusSelected: { backgroundColor: '#007BFF' }, // Cor diferente para destacar o status
   chipText: { color: '#333' },
   chipTextSelected: { color: 'white', fontWeight: 'bold' },
 
   section: { marginBottom: 15 },
-  hardwareSection: { backgroundColor: '#e8efff', padding: 10, borderRadius: 8, marginBottom: 15, borderColor: '#cadaff', borderWidth: 1 },
+  hardwareSection: { backgroundColor: '#e8efff', padding: 10, borderRadius: 8, marginBottom: 15, borderWidth: 1, borderColor: '#cadaff' },
   sectionTitle: { color: '#00184F', fontWeight: 'bold', marginBottom: 10 },
-  
+
   input: { backgroundColor: 'white', padding: 12, borderRadius: 8, marginBottom: 10, borderWidth: 1, borderColor: '#ddd' },
-  inputSmall: { backgroundColor: 'transparent', padding: 5, marginBottom: 15, borderBottomWidth: 1, borderColor: '#ccc' },
+  inputDisabled: { backgroundColor: '#e9ecef', color: '#6c757d' },
+  inputWarning: { backgroundColor: '#fff3cd', padding: 12, borderRadius: 8, marginBottom: 10, borderWidth: 1, borderColor: '#ffe69c' },
   row: { flexDirection: 'row' },
-  
+
   saveButton: { backgroundColor: '#00184F', padding: 15, borderRadius: 8, alignItems: 'center', marginTop: 10, marginBottom: 30 },
   saveButtonText: { color: 'white', fontWeight: 'bold', fontSize: 16 }
 });

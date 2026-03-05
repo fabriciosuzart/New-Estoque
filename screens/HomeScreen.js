@@ -19,20 +19,16 @@ const HomeScreen = ({ navigation }) => {
         icon={require('../assets/images/caixas.png')}
         screen="Estoque"
       />
-      <DynamicButton
+      {/* <DynamicButton
         title="Documentação"
         icon={require('../assets/images/documentacao.png')}
         screen="Documentacao"
-      />
-      <DynamicButton
-        title="Notebooks"
-        icon={require('../assets/images/notebook.png')}
-        screen="NotebooksScreen"
-      />
+      /> */}
+      
       <DynamicButton
         title="Histórico"
         icon={require('../assets/images/mover.png')}
-        screen="Movimentacao"
+        screen="History"
       />
 
       {/* Botão de Logout antigo (Opcional, pois já colocamos no Header) */}
