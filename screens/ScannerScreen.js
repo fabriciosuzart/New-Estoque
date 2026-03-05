@@ -39,10 +39,15 @@ export default function ScannerScreen({ navigation }) {
     lockScan.current = true;
     setLoading(true); // Mostra loading visual
 
-    console.log(`Lido: ${data}`); // Log limpo, apenas 1 vez
+    // 1. A MÁGICA DA SERVICE TAG AQUI: 
+    // Padroniza a leitura forçando tudo para maiúsculo
+    const codigoFormatado = data.toUpperCase();
+
+    console.log(`Lido: ${codigoFormatado}`); // Log limpo, apenas 1 vez
 
     try {
-      const q = query(collection(db, "products"), where("patrimonio", "==", data));
+      // 2. Busca no Firebase usando o codigoFormatado
+      const q = query(collection(db, "products"), where("patrimonio", "==", codigoFormatado));
       const querySnapshot = await getDocs(q);
 
       if (!querySnapshot.empty) {
@@ -50,14 +55,13 @@ export default function ScannerScreen({ navigation }) {
         const doc = querySnapshot.docs[0];
         const itemData = { id: doc.id, ...doc.data() };
         
-        // Navega para a tela de Formulário passando os dados (Modo Edição)
         navigation.navigate('ProductForm', { produto: itemData, modo: 'editar' });
 
       } else {
         // ITEM NÃO ENCONTRADO -> Vai para Cadastro
         Alert.alert(
           "Novo Item", 
-          `Patrimônio ${data} não cadastrado. Deseja cadastrar?`,
+          `Patrimônio/Tag ${codigoFormatado} não cadastrado. Deseja cadastrar?`,
           [
             { 
               text: "Cancelar", 
@@ -67,8 +71,8 @@ export default function ScannerScreen({ navigation }) {
             { 
               text: "Cadastrar", 
               onPress: () => {
-                // Navega para a tela de Formulário passando APENAS o patrimônio (Modo Cadastro)
-                navigation.navigate('ProductForm', { patrimonioScaneado: data, modo: 'novo' });
+                // 3. Envia o codigoFormatado para a tela de Novo
+                navigation.navigate('ProductForm', { patrimonioScaneado: codigoFormatado, modo: 'novo' });
               } 
             }
           ]

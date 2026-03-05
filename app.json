@@ -34,6 +34,12 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "a8d7b1d1-c8fe-4b72-83d5-07cb261737dd"
+      }
+    },
+    "owner": "briciodograu"
   }
 }

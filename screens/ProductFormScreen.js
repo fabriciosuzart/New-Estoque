@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { doc, updateDoc, setDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { doc, updateDoc, setDoc, addDoc, collection, serverTimestamp, getDocs } from 'firebase/firestore';
 import { View, Text, TextInput, StyleSheet, ScrollView, Alert, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
+import { sendPushNotification } from '../utils/services/NotificationService'; 
 import { db } from '../firebaseConfig';
 import { getAuth } from 'firebase/auth'; // NOVO: Para pegar o usuário logado
 
@@ -73,9 +74,9 @@ export default function ProductFormScreen({ route, navigation }) {
         const mudouLocal = produto.local !== local;
         const mudouStatus = produto.status !== status;
 
-        // Se mudou de sala ou mudou de status (ex: quebrou), registra no histórico!
         if (mudouLocal || mudouStatus) {
           const logMovimentacao = {
+            // ... (seu código de log que já estava aqui)
             patrimonio: patrimonio,
             modelo: modelo,
             tipo: tipoFinal,
@@ -90,6 +91,32 @@ export default function ProductFormScreen({ route, navigation }) {
 
           // Grava o recibo na nova coleção "movimentacoes"
           await addDoc(collection(db, "movimentacoes"), logMovimentacao);
+
+          // =========================================================
+          // NOVO: DISPARO DE NOTIFICAÇÕES PUSH
+          // =========================================================
+          try {
+            // Monta a mensagem baseada no que mudou
+            const tituloPush = mudouLocal ? "📍 Movimentação de Ativo" : "⚠️ Mudança de Status";
+            const corpoPush = mudouLocal 
+              ? `O ${tipoFinal} (${patrimonio}) foi movido da sala ${produto.local} para a ${local} por ${usuarioLogado}.`
+              : `O status do ${tipoFinal} (${patrimonio}) mudou para "${status}".`;
+
+            // Pega todos os usuários cadastrados no banco
+            const usersSnapshot = await getDocs(collection(db, "users"));
+            
+            // Manda a notificação para cada Token encontrado
+            usersSnapshot.forEach((userDoc) => {
+              const userData = userDoc.data();
+              // Evita mandar notificação para a própria pessoa que fez a alteração (opcional, mas recomendado)
+              if (userData.pushToken && userData.email !== usuarioLogado) {
+                 sendPushNotification(userData.pushToken, tituloPush, corpoPush);
+              }
+            });
+          } catch (notifError) {
+             console.error("Erro ao processar o envio das notificações:", notifError);
+          }
+          // =========================================================
         }
 
         // Atualiza o equipamento normalmente
@@ -100,23 +127,23 @@ export default function ProductFormScreen({ route, navigation }) {
         // NOVO CADASTRO
         dadosParaSalvar.dataCriacao = serverTimestamp();
         await setDoc(docRef, dadosParaSalvar);
-        
+
         // (Opcional) Registrar a criação no histórico também
         await addDoc(collection(db, "movimentacoes"), {
-            patrimonio: patrimonio,
-            modelo: modelo,
-            localNovo: local,
-            statusNovo: status,
-            data: serverTimestamp(),
-            usuario: usuarioLogado,
-            tipoAcao: 'Cadastro Inicial'
+          patrimonio: patrimonio,
+          modelo: modelo,
+          localNovo: local,
+          statusNovo: status,
+          data: serverTimestamp(),
+          usuario: usuarioLogado,
+          tipoAcao: 'Cadastro Inicial'
         });
 
         Alert.alert("Cadastrado", "Item salvo no ID: " + patrimonio);
       }
-      
+
       navigation.goBack();
-      
+
     } catch (error) {
       console.error(error);
       Alert.alert("Erro", "Falha ao salvar. Verifique sua conexão.");
@@ -133,16 +160,16 @@ export default function ProductFormScreen({ route, navigation }) {
           {isEditing ? `Editando Ativo` : "Novo Cadastro"}
         </Text>
 
-        {/* PONTO 4: CAMPO DE PATRIMÔNIO (Travado se for edição) */}
         <View style={styles.section}>
-          <Text style={styles.label}>Nº do Patrimônio *</Text>
+          <Text style={styles.label}>Nº do Patrimônio / Service Tag *</Text>
           <TextInput
             style={[styles.input, isEditing && styles.inputDisabled]}
-            placeholder="Ex: 016266"
+            placeholder="Ex: 016266 ou J8B3C1"
             value={patrimonio}
-            onChangeText={setPatrimonio}
-            editable={!isEditing} // Não deixa mudar o patrimônio na edição, pois ele é o ID no banco
-            keyboardType="numeric"
+            // A MÁGICA ACONTECE AQUI EMBAIXO:
+            onChangeText={(text) => setPatrimonio(text.toUpperCase())}
+            editable={!isEditing}
+            autoCapitalize="characters"
           />
         </View>
 

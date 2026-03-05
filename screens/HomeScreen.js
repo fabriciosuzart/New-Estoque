@@ -1,11 +1,48 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { View, Button, StyleSheet, TouchableOpacity } from "react-native";
-import { auth } from "../firebaseConfig";
+import { auth, db } from "../firebaseConfig"; // Juntei a importação do db aqui
 import { signOut } from "firebase/auth";
+import { doc, setDoc } from 'firebase/firestore';
 import DynamicButton from "../components/Buttons";
-import { Ionicons } from '@expo/vector-icons'; // Importando ícone para o scanner
+import { Ionicons } from '@expo/vector-icons'; 
+import { registerForPushNotificationsAsync } from '../utils/services/NotificationService'; 
 
 const HomeScreen = ({ navigation }) => {
+
+  // =========================================================
+  // GATILHO DAS NOTIFICAÇÕES (Roda sozinho ao abrir a tela)
+  // =========================================================
+  useEffect(() => {
+    async function configurarNotificacoes() {
+      // Pega o usuário logado direto da sua configuração do Firebase
+      const utilizadorLogado = auth.currentUser;
+
+      if (utilizadorLogado) {
+        try {
+          const token = await registerForPushNotificationsAsync();
+          
+          if (token) {
+            // Guarda o Token no Firebase
+            const userRef = doc(db, 'users', utilizadorLogado.email);
+            
+            await setDoc(userRef, {
+              email: utilizadorLogado.email,
+              pushToken: token,
+              ultimoAcesso: new Date()
+            }, { merge: true }); 
+            
+            console.log("Token guardado no Firebase com sucesso para:", utilizadorLogado.email);
+          }
+        } catch (error) {
+          console.error("Erro ao configurar notificações:", error);
+        }
+      }
+    }
+
+    configurarNotificacoes();
+  }, []);
+  // =========================================================
+
   const handleLogout = async () => {
     await signOut(auth);
     navigation.replace("Login");
@@ -13,17 +50,12 @@ const HomeScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      {/* Seus botões originais */}
+      
       <DynamicButton
         title="Estoque"
         icon={require('../assets/images/caixas.png')}
         screen="Estoque"
       />
-      {/* <DynamicButton
-        title="Documentação"
-        icon={require('../assets/images/documentacao.png')}
-        screen="Documentacao"
-      /> */}
       
       <DynamicButton
         title="Histórico"
@@ -31,17 +63,15 @@ const HomeScreen = ({ navigation }) => {
         screen="History"
       />
 
-      {/* Botão de Logout antigo (Opcional, pois já colocamos no Header) */}
       <View style={{ marginTop: 20 }}>
         <Button title="Logout" onPress={handleLogout} color="#d9534f" />
       </View>
 
-      {/* NOVO: Botão Flutuante (FAB) do Scanner */}
+      {/* Botão Flutuante (FAB) do Scanner */}
       <TouchableOpacity 
         style={styles.fab} 
         onPress={() => navigation.navigate("Scanner")}
       >
-        {/* Ícone de código de barras branco */}
         <Ionicons name="barcode-outline" size={32} color="white" />
       </TouchableOpacity>
 
@@ -57,24 +87,23 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 10,
     backgroundColor: "#eeeeee",
-    position: 'relative', // Importante para o botão flutuante se posicionar em relação a esta tela
+    position: 'relative', 
   },
-  // Estilo do Botão Flutuante
   fab: {
-    position: 'absolute', // Faz ele flutuar sobre os outros elementos
+    position: 'absolute', 
     width: 65,
     height: 65,
     alignItems: 'center',
     justifyContent: 'center',
-    right: 25,  // Distância da direita
-    bottom: 30, // Distância do fundo
-    backgroundColor: '#00184F', // Azul oficial da Unisanta
-    borderRadius: 32.5, // Metade da largura para ficar redondinho
-    elevation: 8, // Sombra para dar profundidade no Android
-    shadowColor: '#000', // Sombra no iOS
+    right: 25,  
+    bottom: 30, 
+    backgroundColor: '#00184F', 
+    borderRadius: 32.5, 
+    elevation: 8, 
+    shadowColor: '#000', 
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.30,
     shadowRadius: 4.65,
-    zIndex: 999, // Garante que fique por cima de tudo
+    zIndex: 999, 
   }
 });
