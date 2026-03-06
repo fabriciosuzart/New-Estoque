@@ -3,43 +3,36 @@ import { doc, updateDoc, setDoc, addDoc, collection, serverTimestamp, getDocs } 
 import { View, Text, TextInput, StyleSheet, ScrollView, Alert, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
 import { sendPushNotification } from '../utils/services/NotificationService'; 
 import { db } from '../firebaseConfig';
-import { getAuth } from 'firebase/auth'; // NOVO: Para pegar o usuário logado
+import { getAuth } from 'firebase/auth';
 
 export default function ProductFormScreen({ route, navigation }) {
   const { produto, patrimonioScaneado, modo } = route.params || {};
   const isEditing = modo === 'editar';
 
-  // Autenticação (Para registrar quem editou)
   const auth = getAuth();
   const usuarioLogado = auth.currentUser?.email || 'Usuario Desconhecido';
 
-  // 1. Estados Base
   const [patrimonio, setPatrimonio] = useState(produto?.patrimonio || patrimonioScaneado || '');
 
-  // 2. Lógica de Tipo com a opção "Outro"
   const [tipo, setTipo] = useState(produto?.tipo || 'Computador');
-  const [tipoOutro, setTipoOutro] = useState(''); // Guarda o texto caso seja "Outro"
+  const [tipoOutro, setTipoOutro] = useState('');
 
   const [marca, setMarca] = useState(produto?.marca || '');
   const [modelo, setModelo] = useState(produto?.modelo || '');
 
-  // 3. Status Fixo
   const [status, setStatus] = useState(produto?.status || 'Disponível');
 
   const [local, setLocal] = useState(produto?.local || '');
   const [obs, setObs] = useState(produto?.observacao || '');
 
-  // Estados de Hardware
   const [processador, setProcessador] = useState(produto?.processador || '');
   const [memoria, setMemoria] = useState(produto?.memoria || '');
   const [armazenamento, setArmazenamento] = useState(produto?.armazenamento || '');
 
-  // Listas Fixas
   const tiposComuns = ["Computador", "Notebook", "Monitor", "Estabilizador", "Periférico", "Outro"];
   const statusComuns = ["Disponível", "Em uso", "Emprestado", "Em manutenção", "Defeito", "Para Descarte"];
 
   const handleSave = async () => {
-    // Validação do Tipo Final
     const tipoFinal = tipo === 'Outro' ? tipoOutro : tipo;
 
     if (!tipoFinal || !modelo || !local || !patrimonio) {
@@ -56,7 +49,7 @@ export default function ProductFormScreen({ route, navigation }) {
       local,
       observacao: obs,
       ultimaEdicao: serverTimestamp(),
-      editadoPor: usuarioLogado // Ponto 5 resolvido aqui na gravação!
+      editadoPor: usuarioLogado 
     };
 
     if (tipoFinal === "Computador" || tipoFinal === "Notebook") {
@@ -70,13 +63,11 @@ export default function ProductFormScreen({ route, navigation }) {
       const docRef = doc(db, "products", idDoDocumento);
 
       if (isEditing) {
-        // LÓGICA DE AUDITORIA (MOVIMENTAÇÃO E STATUS)
         const mudouLocal = produto.local !== local;
         const mudouStatus = produto.status !== status;
 
         if (mudouLocal || mudouStatus) {
           const logMovimentacao = {
-            // ... (seu código de log que já estava aqui)
             patrimonio: patrimonio,
             modelo: modelo,
             tipo: tipoFinal,
@@ -89,26 +80,17 @@ export default function ProductFormScreen({ route, navigation }) {
             tipoAcao: mudouLocal ? 'Transferência de Local' : 'Mudança de Status'
           };
 
-          // Grava o recibo na nova coleção "movimentacoes"
           await addDoc(collection(db, "movimentacoes"), logMovimentacao);
-
-          // =========================================================
-          // NOVO: DISPARO DE NOTIFICAÇÕES PUSH
-          // =========================================================
           try {
-            // Monta a mensagem baseada no que mudou
             const tituloPush = mudouLocal ? "📍 Movimentação de Ativo" : "⚠️ Mudança de Status";
             const corpoPush = mudouLocal 
               ? `O ${tipoFinal} (${patrimonio}) foi movido da sala ${produto.local} para a ${local} por ${usuarioLogado}.`
               : `O status do ${tipoFinal} (${patrimonio}) mudou para "${status}".`;
 
-            // Pega todos os usuários cadastrados no banco
             const usersSnapshot = await getDocs(collection(db, "users"));
             
-            // Manda a notificação para cada Token encontrado
             usersSnapshot.forEach((userDoc) => {
               const userData = userDoc.data();
-              // Evita mandar notificação para a própria pessoa que fez a alteração (opcional, mas recomendado)
               if (userData.pushToken && userData.email !== usuarioLogado) {
                  sendPushNotification(userData.pushToken, tituloPush, corpoPush);
               }
@@ -116,19 +98,15 @@ export default function ProductFormScreen({ route, navigation }) {
           } catch (notifError) {
              console.error("Erro ao processar o envio das notificações:", notifError);
           }
-          // =========================================================
         }
 
-        // Atualiza o equipamento normalmente
         await updateDoc(docRef, dadosParaSalvar);
         Alert.alert("Atualizado", "Item editado com sucesso!");
 
       } else {
-        // NOVO CADASTRO
         dadosParaSalvar.dataCriacao = serverTimestamp();
         await setDoc(docRef, dadosParaSalvar);
 
-        // (Opcional) Registrar a criação no histórico também
         await addDoc(collection(db, "movimentacoes"), {
           patrimonio: patrimonio,
           modelo: modelo,
@@ -166,14 +144,12 @@ export default function ProductFormScreen({ route, navigation }) {
             style={[styles.input, isEditing && styles.inputDisabled]}
             placeholder="Ex: 016266 ou J8B3C1"
             value={patrimonio}
-            // A MÁGICA ACONTECE AQUI EMBAIXO:
             onChangeText={(text) => setPatrimonio(text.toUpperCase())}
             editable={!isEditing}
             autoCapitalize="characters"
           />
         </View>
 
-        {/* PONTO 3: SELEÇÃO DE TIPO BLINDADA */}
         <Text style={styles.label}>Equipamento *</Text>
         <View style={styles.chipContainer}>
           {tiposComuns.map((t) => (
@@ -187,7 +163,6 @@ export default function ProductFormScreen({ route, navigation }) {
           ))}
         </View>
 
-        {/* Condicional para o Tipo "Outro" */}
         {tipo === 'Outro' && (
           <TextInput
             style={styles.inputWarning}
@@ -198,7 +173,6 @@ export default function ProductFormScreen({ route, navigation }) {
           />
         )}
 
-        {/* PONTO 2: SELEÇÃO DE STATUS BLINDADA */}
         <Text style={[styles.label, { marginTop: 10 }]}>Status do Equipamento *</Text>
         <View style={styles.chipContainer}>
           {statusComuns.map((s) => (
@@ -212,7 +186,6 @@ export default function ProductFormScreen({ route, navigation }) {
           ))}
         </View>
 
-        {/* CAMPOS COMUNS */}
         <View style={styles.section}>
           <Text style={styles.label}>Detalhes da Máquina</Text>
           <TextInput style={styles.input} placeholder="Marca (Ex: Dell, HP)" value={marca} onChangeText={setMarca} />
@@ -220,7 +193,6 @@ export default function ProductFormScreen({ route, navigation }) {
           <TextInput style={styles.input} placeholder="Localização Atual (Ex: M220) *" value={local} onChangeText={setLocal} />
         </View>
 
-        {/* CONDICIONAIS DE HARDWARE */}
         {(tipo === "Computador" || tipo === "Notebook") && (
           <View style={styles.hardwareSection}>
             <Text style={styles.sectionTitle}>Configuração de Hardware</Text>
@@ -252,7 +224,7 @@ const styles = StyleSheet.create({
   chipContainer: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 10 },
   chip: { backgroundColor: '#e0e0e0', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, marginRight: 8, marginBottom: 8 },
   chipSelected: { backgroundColor: '#00184F' },
-  statusSelected: { backgroundColor: '#007BFF' }, // Cor diferente para destacar o status
+  statusSelected: { backgroundColor: '#007BFF' },
   chipText: { color: '#333' },
   chipTextSelected: { color: 'white', fontWeight: 'bold' },
 

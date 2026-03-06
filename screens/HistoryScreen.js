@@ -11,7 +11,6 @@ export default function HistoryScreen() {
   const [searchText, setSearchText] = useState('');
 
   useEffect(() => {
-    // Busca na coleção de movimentações, ordenando do mais recente para o mais antigo
     const q = query(collection(db, "movimentacoes"), orderBy("data", "desc"));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -27,7 +26,6 @@ export default function HistoryScreen() {
     return () => unsubscribe();
   }, []);
 
-  // Filtro de busca (por patrimônio, usuário ou local)
   useEffect(() => {
     if (searchText) {
       const lowerSearch = searchText.toLowerCase();
@@ -43,7 +41,6 @@ export default function HistoryScreen() {
     }
   }, [searchText, historyLogs]);
 
-  // Função para formatar a data do Firebase para o padrão brasileiro
   const formatarData = (timestamp) => {
     if (!timestamp) return 'Data não registrada';
     const dataObj = timestamp.toDate();
@@ -62,7 +59,6 @@ export default function HistoryScreen() {
       
       <Text style={styles.modelo}>{item.tipo} - {item.modelo}</Text>
       
-      {/* Mostra as mudanças de Local se houver */}
       {item.localAnterior !== item.localNovo && (
         <View style={styles.mudancaBox}>
           <Text style={styles.labelMudanca}>📍 Mudança de Local:</Text>
@@ -71,7 +67,6 @@ export default function HistoryScreen() {
         </View>
       )}
 
-      {/* Mostra as mudanças de Status se houver */}
       {item.statusAnterior !== item.statusNovo && (
         <View style={styles.mudancaBox}>
           <Text style={styles.labelMudanca}>⚠️ Mudança de Status:</Text>
@@ -89,7 +84,6 @@ export default function HistoryScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Barra de Pesquisa */}
       <View style={styles.searchContainer}>
         <Ionicons name="search" size={20} color="#666" style={{marginRight: 10}} />
         <TextInput 

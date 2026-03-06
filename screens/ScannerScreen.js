@@ -9,10 +9,8 @@ export default function ScannerScreen({ navigation }) {
   const [permission, requestPermission] = useCameraPermissions();
   const [loading, setLoading] = useState(false);
   
-  // A mágica acontece aqui: useRef não espera renderizar para atualizar
   const lockScan = useRef(false); 
 
-  // Resetar a trava toda vez que a tela ganhar foco
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       lockScan.current = false;
@@ -32,33 +30,26 @@ export default function ScannerScreen({ navigation }) {
   }
 
   const handleBarCodeScanned = async ({ type, data }) => {
-    // Se estiver travado, ignora
     if (lockScan.current) return;
     
-    // Trava imediatamente
     lockScan.current = true;
-    setLoading(true); // Mostra loading visual
+    setLoading(true); 
 
-    // 1. A MÁGICA DA SERVICE TAG AQUI: 
-    // Padroniza a leitura forçando tudo para maiúsculo
     const codigoFormatado = data.toUpperCase();
 
-    console.log(`Lido: ${codigoFormatado}`); // Log limpo, apenas 1 vez
+    console.log(`Lido: ${codigoFormatado}`); 
 
     try {
-      // 2. Busca no Firebase usando o codigoFormatado
       const q = query(collection(db, "products"), where("patrimonio", "==", codigoFormatado));
       const querySnapshot = await getDocs(q);
 
       if (!querySnapshot.empty) {
-        // ITEM ENCONTRADO -> Vai para Edição
         const doc = querySnapshot.docs[0];
         const itemData = { id: doc.id, ...doc.data() };
         
         navigation.navigate('ProductForm', { produto: itemData, modo: 'editar' });
 
       } else {
-        // ITEM NÃO ENCONTRADO -> Vai para Cadastro
         Alert.alert(
           "Novo Item", 
           `Patrimônio/Tag ${codigoFormatado} não cadastrado. Deseja cadastrar?`,
@@ -71,7 +62,6 @@ export default function ScannerScreen({ navigation }) {
             { 
               text: "Cadastrar", 
               onPress: () => {
-                // 3. Envia o codigoFormatado para a tela de Novo
                 navigation.navigate('ProductForm', { patrimonioScaneado: codigoFormatado, modo: 'novo' });
               } 
             }
@@ -81,7 +71,7 @@ export default function ScannerScreen({ navigation }) {
     } catch (error) {
       console.error(error);
       Alert.alert("Erro", "Falha na leitura.");
-      lockScan.current = false; // Destrava em caso de erro
+      lockScan.current = false; 
       setLoading(false);
     }
   };
@@ -91,11 +81,10 @@ export default function ScannerScreen({ navigation }) {
       <CameraView
         style={StyleSheet.absoluteFillObject}
         facing="back"
-        onBarcodeScanned={handleBarCodeScanned} // Não precisa mais da condicional aqui, o ref resolve
+        onBarcodeScanned={handleBarCodeScanned} 
         barcodeScannerSettings={{ barcodeTypes: ["code128", "code39", "qr"] }}
       />
       
-      {/* Overlay Visual para Foco */}
       <View style={styles.overlay}>
         <View style={styles.unfocusedContainer}></View>
         <View style={styles.middleContainer}>
@@ -119,7 +108,7 @@ const styles = StyleSheet.create({
   overlay: { flex: 1 },
   unfocusedContainer: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', alignItems: 'center', justifyContent: 'center' },
   middleContainer: { flexDirection: 'row', height: 200 },
-  focusedContainer: { flex: 3 }, // Área transparente do meio
+  focusedContainer: { flex: 3 }, 
   helpText: { color: 'white', fontSize: 16, marginTop: 20 },
   cornerBorder: { flex: 1, borderWidth: 2, borderColor: '#00ff00', borderRadius: 10 }
 });

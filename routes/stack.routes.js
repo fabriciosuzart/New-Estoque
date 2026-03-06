@@ -48,10 +48,10 @@ export default function StackRoutes() {
   return (
     <Stack.Navigator
       screenOptions={{
-        headerShown: true, // Correto (Booleano)
+        headerShown: true, 
         headerTintColor: 'white',
         headerStyle: { backgroundColor: '#00184F' },
-        headerBackTitleVisible: false, // ✅ CORREÇÃO: É assim que se esconde o texto globalmente
+        headerBackTitleVisible: false, 
       }}
       initialRouteName={user ? "Home" : "Login"}
     >
@@ -61,7 +61,6 @@ export default function StackRoutes() {
         component={HomeScreen}
         options={({ navigation }) => ({
           title: 'Home',
-          // headerBackTitle removido daqui pois headerBackTitleVisible global já resolve
           headerRight: () => (
             <TouchableOpacity style={styles.buttonRight} onPress={() => handleLogout(navigation)}>
               <Ionicons name="exit" size={24} color="white" />
@@ -77,7 +76,6 @@ export default function StackRoutes() {
 
       <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
 
-      {/* Removi todos os 'headerBackTitle: false' que causam o erro de tipo */}
       <Stack.Screen name="Estoque" component={ProductListScreen} options={{ title: 'Estoque' }} />
       <Stack.Screen name="Documentacao" component={DocumentacaoScreen} options={{ title: "Documentação" }} />
       <Stack.Screen name="Movimentacao" component={MovimentacaoScreen} options={{ title: "Movimentação" }} />

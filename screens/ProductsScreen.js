@@ -9,12 +9,10 @@ export default function ProductListScreen({ navigation }) {
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // Estados de Filtro
   const [searchText, setSearchText] = useState('');
   const [selectedType, setSelectedType] = useState('Todos');
-  const [selectedStatus, setSelectedStatus] = useState('Todos'); // NOVO: Estado do filtro de status
+  const [selectedStatus, setSelectedStatus] = useState('Todos'); 
 
-  // Listas de Filtros
   const tipos = ["Todos", "Computador", "Notebook", "Monitor", "Estabilizador", "Periférico", "Outro"];
   const statusList = ["Todos", "Disponível", "Em uso", "Emprestado", "Em manutenção", "Defeito", "Para Descarte"];
 
@@ -34,21 +32,17 @@ export default function ProductListScreen({ navigation }) {
     return () => unsubscribe();
   }, []);
 
-  // MOTOR DE BUSCA E FILTROS COMBINADOS
   useEffect(() => {
     let resultado = products;
 
-    // 1. Filtro por Tipo
     if (selectedType !== 'Todos') {
       resultado = resultado.filter(item => item.tipo === selectedType);
     }
 
-    // 2. Filtro por Status (NOVO)
     if (selectedStatus !== 'Todos') {
       resultado = resultado.filter(item => item.status === selectedStatus);
     }
 
-    // 3. Filtro por Texto Livre
     if (searchText) {
       const lowerSearch = searchText.toLowerCase();
       resultado = resultado.filter(item => 
@@ -61,7 +55,6 @@ export default function ProductListScreen({ navigation }) {
     setFilteredProducts(resultado);
   }, [searchText, selectedType, selectedStatus, products]);
 
-  // RENDERIZAÇÃO DO CARTÃO DO EQUIPAMENTO
   const renderItem = ({ item }) => (
     <TouchableOpacity 
       style={styles.card} 
@@ -81,7 +74,6 @@ export default function ProductListScreen({ navigation }) {
         <Text style={styles.specs}>⚙️ {item.processador} • {item.memoria}</Text>
       )}
 
-      {/* NOVO: AUDITORIA - Quem editou por último */}
       <View style={styles.footerCard}>
         <Text style={styles.editadoPor}>
           {item.editadoPor ? `👤 Atualizado por: ${item.editadoPor}` : '👤 Sem registro de edição'}
@@ -90,15 +82,14 @@ export default function ProductListScreen({ navigation }) {
     </TouchableOpacity>
   );
 
-  // Função auxiliar para dar cores diferentes aos status
   const getStatusColor = (status) => {
     switch(status) {
-      case 'Disponível': return '#28a745'; // Verde
-      case 'Em uso': return '#007bff'; // Azul
-      case 'Defeito': return '#dc3545'; // Vermelho
-      case 'Em manutenção': return '#fd7e14'; // Laranja
-      case 'Emprestado': return '#6f42c1'; // Roxo
-      case 'Para Descarte': return '#6c757d'; // Cinza
+      case 'Disponível': return '#28a745'; 
+      case 'Em uso': return '#007bff'; 
+      case 'Defeito': return '#dc3545'; 
+      case 'Em manutenção': return '#fd7e14'; 
+      case 'Emprestado': return '#6f42c1'; 
+      case 'Para Descarte': return '#6c757d'; 
       default: return '#17a2b8';
     }
   };

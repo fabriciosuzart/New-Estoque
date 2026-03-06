@@ -1,12 +1,12 @@
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
-import Constants from 'expo-constants'; // NOVO: O leitor de configurações
+import Constants from 'expo-constants'; 
 import { Platform } from 'react-native';
 
 Notifications.setNotificationHandler({
     handleNotification: async () => ({
-      shouldShowBanner: true, // Mostra o pop-up no topo
-      shouldShowList: true,   // Mantém na central de notificações
+      shouldShowBanner: true, 
+      shouldShowList: true,  
       shouldPlaySound: true,
       shouldSetBadge: false,
     }),
@@ -29,8 +29,6 @@ export async function registerForPushNotificationsAsync() {
       return null;
     }
     
-    // A MÁGICA ACONTECE AQUI:
-    // Ele vai lá no app.json e puxa o ID que o EAS acabou de gerar
     const projectId = Constants.expoConfig?.extra?.eas?.projectId;
     
     if (!projectId) {
@@ -59,14 +57,13 @@ export async function registerForPushNotificationsAsync() {
   return token;
 }
 
-// Função que envia a notificação para a API da Expo
 export async function sendPushNotification(expoPushToken, title, body) {
     const message = {
       to: expoPushToken,
       sound: 'default',
       title: title,
       body: body,
-      data: { someData: 'goes here' }, // Você pode mandar dados invisíveis aqui se quiser
+      data: { someData: 'goes here' }, 
     };
   
     try {

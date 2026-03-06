@@ -9,12 +9,8 @@ import { registerForPushNotificationsAsync } from '../utils/services/Notificatio
 
 const HomeScreen = ({ navigation }) => {
 
-  // =========================================================
-  // GATILHO DAS NOTIFICAÇÕES (Roda sozinho ao abrir a tela)
-  // =========================================================
   useEffect(() => {
     async function configurarNotificacoes() {
-      // Pega o usuário logado direto da sua configuração do Firebase
       const utilizadorLogado = auth.currentUser;
 
       if (utilizadorLogado) {
@@ -22,7 +18,6 @@ const HomeScreen = ({ navigation }) => {
           const token = await registerForPushNotificationsAsync();
           
           if (token) {
-            // Guarda o Token no Firebase
             const userRef = doc(db, 'users', utilizadorLogado.email);
             
             await setDoc(userRef, {
@@ -41,7 +36,6 @@ const HomeScreen = ({ navigation }) => {
 
     configurarNotificacoes();
   }, []);
-  // =========================================================
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -67,7 +61,6 @@ const HomeScreen = ({ navigation }) => {
         <Button title="Logout" onPress={handleLogout} color="#d9534f" />
       </View>
 
-      {/* Botão Flutuante (FAB) do Scanner */}
       <TouchableOpacity 
         style={styles.fab} 
         onPress={() => navigation.navigate("Scanner")}

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Text, TextInput, Button, Alert, Image, KeyboardAvoidingView, Platform, StyleSheet } from "react-native";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "../firebaseConfig"; // Import Firebase auth
+import { auth } from "../firebaseConfig"; 
 
 const LoginScreen = ({ navigation }) => {
     const [email, setEmail] = useState("");
@@ -10,7 +10,7 @@ const LoginScreen = ({ navigation }) => {
     const handleLogin = async () => {
         try {
             await signInWithEmailAndPassword(auth, email, password);
-            navigation.replace("Home"); // Navigate to HomeScreen
+            navigation.replace("Home");
         } catch (error) {
             Alert.alert("Falha no login tente novamente");
         }
@@ -27,8 +27,8 @@ const LoginScreen = ({ navigation }) => {
             <Text style={{ fontSize: 24, textAlign: "center", marginBottom: 20, color: "white" }}>Login</Text>
             <TextInput
                 placeholder="Email"
-                textContentType="none" // Evita sugestões no iOS
-                autoComplete="off" // Tenta desativar sugestões no Android
+                textContentType="none" 
+                autoComplete="off" 
                 importantForAutofill="no"
                 value={email}
                 onChangeText={setEmail}
@@ -39,8 +39,8 @@ const LoginScreen = ({ navigation }) => {
             />
             <TextInput
                 placeholder="Senha"
-                textContentType="none" // Evita sugestões no iOS
-                autoComplete="off" // Tenta desativar sugestões no Android
+                textContentType="none" 
+                autoComplete="off"
                 importantForAutofill="no"
                 value={password}
                 onChangeText={setPassword}
