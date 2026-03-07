@@ -13,6 +13,8 @@ import ProductListScreen from "../screens/ProductsScreen";
 import ScannerScreen from "../screens/ScannerScreen";
 import ProductFormScreen from "../screens/ProductFormScreen";
 import HistoryScreen from '../screens/HistoryScreen';
+import SettingsScreen from "../screens/SettingsScreen";
+import BulkMoveScreen from "../screens/BulkMoveScreen";
 
 const Stack = createStackNavigator();
 
@@ -48,10 +50,10 @@ export default function StackRoutes() {
   return (
     <Stack.Navigator
       screenOptions={{
-        headerShown: true, 
+        headerShown: true,
         headerTintColor: 'white',
         headerStyle: { backgroundColor: '#00184F' },
-        headerBackTitleVisible: false, 
+        headerBackTitleVisible: false,
       }}
       initialRouteName={user ? "Home" : "Login"}
     >
@@ -79,9 +81,11 @@ export default function StackRoutes() {
       <Stack.Screen name="Estoque" component={ProductListScreen} options={{ title: 'Estoque' }} />
       <Stack.Screen name="Documentacao" component={DocumentacaoScreen} options={{ title: "Documentação" }} />
       <Stack.Screen name="Movimentacao" component={MovimentacaoScreen} options={{ title: "Movimentação" }} />
-      <Stack.Screen name="History" component={HistoryScreen} options={{ title: 'Auditoria e Movimentações' }}/>
+      <Stack.Screen name="History" component={HistoryScreen} options={{ title: 'Auditoria e Movimentações' }} />
       <Stack.Screen name="Scanner" component={ScannerScreen} options={{ title: 'Leitor de Patrimônio', headerBackTitleVisible: false }} />
       <Stack.Screen name="ProductForm" component={ProductFormScreen} options={{ title: 'Gerenciar Item' }} />
+      <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Configurações' }} />
+      <Stack.Screen name="BulkMove" component={BulkMoveScreen} options={{ title: 'Transf. em Massa' }} />
 
     </Stack.Navigator>
   )

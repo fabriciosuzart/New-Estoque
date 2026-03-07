@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { doc, updateDoc, setDoc, addDoc, collection, serverTimestamp, getDocs } from 'firebase/firestore';
 import { View, Text, TextInput, StyleSheet, ScrollView, Alert, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
-import { sendPushNotification } from '../utils/services/NotificationService'; 
+import { sendPushNotification } from '../utils/services/NotificationService';
 import { db } from '../firebaseConfig';
 import { getAuth } from 'firebase/auth';
 
@@ -49,7 +49,7 @@ export default function ProductFormScreen({ route, navigation }) {
       local,
       observacao: obs,
       ultimaEdicao: serverTimestamp(),
-      editadoPor: usuarioLogado 
+      editadoPor: usuarioLogado
     };
 
     if (tipoFinal === "Computador" || tipoFinal === "Notebook") {
@@ -83,20 +83,21 @@ export default function ProductFormScreen({ route, navigation }) {
           await addDoc(collection(db, "movimentacoes"), logMovimentacao);
           try {
             const tituloPush = mudouLocal ? "📍 Movimentação de Ativo" : "⚠️ Mudança de Status";
-            const corpoPush = mudouLocal 
+            const corpoPush = mudouLocal
               ? `O ${tipoFinal} (${patrimonio}) foi movido da sala ${produto.local} para a ${local} por ${usuarioLogado}.`
               : `O status do ${tipoFinal} (${patrimonio}) mudou para "${status}".`;
 
             const usersSnapshot = await getDocs(collection(db, "users"));
-            
+
             usersSnapshot.forEach((userDoc) => {
               const userData = userDoc.data();
-              if (userData.pushToken && userData.email !== usuarioLogado) {
-                 sendPushNotification(userData.pushToken, tituloPush, corpoPush);
+              
+              if (userData.pushTokens && userData.pushTokens.length > 0 && userData.email !== usuarioLogado && userData.receberNotificacoes !== false) {
+                 sendPushNotification(userData.pushTokens, tituloPush, corpoPush);
               }
             });
           } catch (notifError) {
-             console.error("Erro ao processar o envio das notificações:", notifError);
+            console.error("Erro ao processar o envio das notificações:", notifError);
           }
         }
 
