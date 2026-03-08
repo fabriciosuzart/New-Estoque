@@ -32,32 +32,24 @@ export default function ProductListScreen({ navigation }) {
     return () => unsubscribe();
   }, []);
 
-  // ==========================================
-  // O MOTOR DE BUSCA EM CASCATA (SUPERPODERES)
-  // ==========================================
   useEffect(() => {
     let resultado = products;
 
-    // 1. Aplica o Filtro de TIPO
     if (selectedType !== 'Todos') {
       resultado = resultado.filter(item => item.tipo === selectedType);
     }
 
-    // 2. Aplica o Filtro de STATUS
     if (selectedStatus !== 'Todos') {
       resultado = resultado.filter(item => item.status === selectedStatus);
     }
 
-    // 3. Aplica a Busca Universal em Texto (Super Busca Blindada)
     if (searchText.trim() !== '') {
       const lowerSearch = searchText.toLowerCase().trim();
       
       resultado = resultado.filter(item => {
-        // MÁGICA AQUI: Pega ABSOLUTAMENTE TODOS os valores do equipamento
-        // Não importa se o campo chama "processador", "cpu" ou "config". Ele pega o valor de tudo!
         const stringGigante = Object.values(item)
-          .map(valor => String(valor)) // Garante que até números (ex: 8) virem texto
-          .join(' ') // Junta tudo num texto só com espaços
+          .map(valor => String(valor))
+          .join(' ') 
           .toLowerCase();
         
         return stringGigante.includes(lowerSearch);
@@ -108,7 +100,6 @@ export default function ProductListScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      {/* Barra de Pesquisa */}
       <View style={styles.searchContainer}>
         <Ionicons name="search" size={20} color="#666" style={{marginRight: 10}} />
         <TextInput 
@@ -125,10 +116,8 @@ export default function ProductListScreen({ navigation }) {
         )}
       </View>
 
-      {/* ÁREA DE FILTROS */}
       <View style={{ maxHeight: 110, paddingBottom: 10 }}>
         
-        {/* Filtro 1: TIPO */}
         <View style={styles.filterRow}>
           <Text style={styles.filterLabel}>Tipo:</Text>
           <FlatList 
@@ -147,7 +136,6 @@ export default function ProductListScreen({ navigation }) {
           />
         </View>
 
-        {/* Filtro 2: STATUS */}
         <View style={styles.filterRow}>
           <Text style={styles.filterLabel}>Status:</Text>
           <FlatList 
@@ -190,7 +178,6 @@ export default function ProductListScreen({ navigation }) {
         </>
       )}
       
-      {/* Botão Flutuante */}
       <TouchableOpacity 
         style={styles.fab}
         onPress={() => navigation.navigate('ProductForm', { modo: 'novo' })}

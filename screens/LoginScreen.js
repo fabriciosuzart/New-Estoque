@@ -18,7 +18,6 @@ export default function LoginScreen({ navigation }) {
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email.trim(), password);
-      // O SEGREDO ESTAVA AQUI: A navegação de volta ativada!
       navigation.replace("Home"); 
     } catch (error) {
       console.error(error);
@@ -34,7 +33,6 @@ export default function LoginScreen({ navigation }) {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <View style={styles.logoContainer}>
-        {/* Ícone corporativo no lugar da logo antiga */}
         <View style={styles.iconCircle}>
           <Ionicons name="layers" size={60} color="#00184F" />
         </View>

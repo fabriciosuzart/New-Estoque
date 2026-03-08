@@ -25,9 +25,6 @@ export default function BulkMoveScreen({ navigation }) {
 
   const usuarioLogado = auth.currentUser?.email || 'Usuario Desconhecido';
 
-  // ==========================================
-  // NOVO: BUSCA SESSÕES ABANDONADAS (FANTASMAS)
-  // ==========================================
   useEffect(() => {
     if (inLobby && usuarioLogado) {
       const buscarSessoesPendentes = async () => {
@@ -74,9 +71,6 @@ export default function BulkMoveScreen({ navigation }) {
     ]);
   };
 
-  // ==========================================
-  // 1. LÓGICA DO LOBBY (CRIAR OU ENTRAR)
-  // ==========================================
   const criarNovaSessao = async () => {
     if (!localDestino.trim()) {
       Alert.alert("Atenção", "Digite o Local de Destino para criar a sala.");
