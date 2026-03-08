@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TextInput, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndicator, KeyboardAvoidingView, ScrollView, Platform } from 'react-native';
 import { doc, getDoc, setDoc, updateDoc, collection, addDoc, serverTimestamp, getDocs, onSnapshot, arrayUnion, arrayRemove, query, where, deleteDoc } from 'firebase/firestore';
 import { db, auth } from '../firebaseConfig';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -284,47 +284,54 @@ export default function BulkMoveScreen({ navigation }) {
   // TELA 1: O LOBBY
   if (inLobby) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.headerTitle}>Inventário Colaborativo</Text>
-        
-        {sessaoPendente && (
-          <View style={[styles.card, { borderColor: '#ff9800', borderWidth: 2 }]}>
-            <Text style={styles.labelTitle}>⚠️ Sessão em Andamento</Text>
-            <Text style={styles.labelDesc}>Você tem uma transferência aberta (SALA: {sessaoPendente.id}) para a sala {sessaoPendente.localDestino}.</Text>
-            
-            <View style={{flexDirection: 'row', justifyContent: 'space-between', marginTop: 10}}>
-              <TouchableOpacity style={[styles.saveButton, {flex: 1, marginRight: 5}]} onPress={() => entrarNaSessao(sessaoPendente.id)}>
-                 <Text style={styles.saveButtonText}>CONTINUAR</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.saveButton, {backgroundColor: '#d9534f', flex: 1, marginLeft: 5}]} onPress={cancelarSessaoPendente}>
-                 <Text style={styles.saveButtonText}>APAGAR</Text>
-              </TouchableOpacity>
+      <KeyboardAvoidingView 
+        style={{ flex: 1, backgroundColor: '#f5f5f5' }} 
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 15, justifyContent: 'center' }}>
+          
+          <Text style={styles.headerTitle}>Inventário Colaborativo</Text>
+          
+          {sessaoPendente && (
+            <View style={[styles.card, { borderColor: '#ff9800', borderWidth: 2 }]}>
+              <Text style={styles.labelTitle}>⚠️ Sessão em Andamento</Text>
+              <Text style={styles.labelDesc}>Você tem uma transferência aberta (SALA: {sessaoPendente.id}) para a sala {sessaoPendente.localDestino}.</Text>
+              
+              <View style={{flexDirection: 'row', justifyContent: 'space-between', marginTop: 10}}>
+                <TouchableOpacity style={[styles.saveButton, {flex: 1, marginRight: 5}]} onPress={() => entrarNaSessao(sessaoPendente.id)}>
+                   <Text style={styles.saveButtonText}>CONTINUAR</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.saveButton, {backgroundColor: '#d9534f', flex: 1, marginLeft: 5}]} onPress={cancelarSessaoPendente}>
+                   <Text style={styles.saveButtonText}>APAGAR</Text>
+                </TouchableOpacity>
+              </View>
             </View>
+          )}
+
+          <View style={styles.card}>
+            <Text style={styles.labelTitle}>Criar Nova Sessão</Text>
+            <Text style={styles.labelDesc}>Para qual sala os equipamentos vão?</Text>
+            <TextInput style={styles.input} placeholder="Ex: M226" value={localDestino} onChangeText={setLocalDestino} />
+            <TouchableOpacity style={styles.saveButton} onPress={criarNovaSessao} disabled={isProcessing}>
+               {isProcessing ? <ActivityIndicator color="white" /> : <Text style={styles.saveButtonText}>CRIAR E ABRIR CÂMERA</Text>}
+            </TouchableOpacity>
           </View>
-        )}
 
-        <View style={styles.card}>
-          <Text style={styles.labelTitle}>Criar Nova Sessão</Text>
-          <Text style={styles.labelDesc}>Para qual sala os equipamentos vão?</Text>
-          <TextInput style={styles.input} placeholder="Ex: M226" value={localDestino} onChangeText={setLocalDestino} />
-          <TouchableOpacity style={styles.saveButton} onPress={criarNovaSessao} disabled={isProcessing}>
-             {isProcessing ? <ActivityIndicator color="white" /> : <Text style={styles.saveButtonText}>CRIAR E ABRIR CÂMERA</Text>}
-          </TouchableOpacity>
-        </View>
+          <Text style={styles.ouTexto}>OU</Text>
 
-        <Text style={styles.ouTexto}>OU</Text>
+          <View style={styles.card}>
+            <Text style={styles.labelTitle}>Ajudar um Colega</Text>
+            <Text style={styles.labelDesc}>Digite o código da sala aberta:</Text>
+            <TextInput style={styles.input} placeholder="Ex: X9K2" value={codigoSalaEntrada} onChangeText={(texto) => setCodigoSalaEntrada(texto.toUpperCase())} autoCapitalize="characters" />
+            <TouchableOpacity style={[styles.saveButton, {backgroundColor: '#4CAF50'}]} onPress={() => entrarNaSessao(codigoSalaEntrada)} disabled={isProcessing}>
+              <Text style={styles.saveButtonText}>ENTRAR NA SESSÃO</Text>
+            </TouchableOpacity>
+          </View>
 
-        <View style={styles.card}>
-          <Text style={styles.labelTitle}>Ajudar um Colega</Text>
-          <Text style={styles.labelDesc}>Digite o código da sala aberta:</Text>
-          <TextInput style={styles.input} placeholder="Ex: X9K2" value={codigoSalaEntrada} onChangeText={(texto) => setCodigoSalaEntrada(texto.toUpperCase())} autoCapitalize="characters" />
-          <TouchableOpacity style={[styles.saveButton, {backgroundColor: '#4CAF50'}]} onPress={() => entrarNaSessao(codigoSalaEntrada)} disabled={isProcessing}>
-            <Text style={styles.saveButtonText}>ENTRAR NA SESSÃO</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     );
-  }
+  }``
 
   return (
     <View style={styles.container}>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
 import { db } from '../firebaseConfig';
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { Ionicons } from '@expo/vector-icons';
@@ -32,28 +32,52 @@ export default function ProductListScreen({ navigation }) {
     return () => unsubscribe();
   }, []);
 
+  // ==========================================
+  // O MOTOR DE BUSCA EM CASCATA (SUPERPODERES)
+  // ==========================================
   useEffect(() => {
     let resultado = products;
 
+    // 1. Aplica o Filtro de TIPO
     if (selectedType !== 'Todos') {
       resultado = resultado.filter(item => item.tipo === selectedType);
     }
 
+    // 2. Aplica o Filtro de STATUS
     if (selectedStatus !== 'Todos') {
       resultado = resultado.filter(item => item.status === selectedStatus);
     }
 
-    if (searchText) {
-      const lowerSearch = searchText.toLowerCase();
-      resultado = resultado.filter(item => 
-        (item.patrimonio && item.patrimonio.toLowerCase().includes(lowerSearch)) ||
-        (item.modelo && item.modelo.toLowerCase().includes(lowerSearch)) ||
-        (item.local && item.local.toLowerCase().includes(lowerSearch))
-      );
+    // 3. Aplica a Busca Universal em Texto (Super Busca Blindada)
+    if (searchText.trim() !== '') {
+      const lowerSearch = searchText.toLowerCase().trim();
+      
+      resultado = resultado.filter(item => {
+        // MÁGICA AQUI: Pega ABSOLUTAMENTE TODOS os valores do equipamento
+        // Não importa se o campo chama "processador", "cpu" ou "config". Ele pega o valor de tudo!
+        const stringGigante = Object.values(item)
+          .map(valor => String(valor)) // Garante que até números (ex: 8) virem texto
+          .join(' ') // Junta tudo num texto só com espaços
+          .toLowerCase();
+        
+        return stringGigante.includes(lowerSearch);
+      });
     }
 
     setFilteredProducts(resultado);
   }, [searchText, selectedType, selectedStatus, products]);
+
+  const getStatusColor = (status) => {
+    switch(status) {
+      case 'Disponível': return '#28a745'; 
+      case 'Em uso': return '#007bff'; 
+      case 'Defeito': return '#dc3545'; 
+      case 'Em manutenção': return '#fd7e14'; 
+      case 'Emprestado': return '#6f42c1'; 
+      case 'Para Descarte': return '#6c757d'; 
+      default: return '#17a2b8';
+    }
+  };
 
   const renderItem = ({ item }) => (
     <TouchableOpacity 
@@ -82,18 +106,6 @@ export default function ProductListScreen({ navigation }) {
     </TouchableOpacity>
   );
 
-  const getStatusColor = (status) => {
-    switch(status) {
-      case 'Disponível': return '#28a745'; 
-      case 'Em uso': return '#007bff'; 
-      case 'Defeito': return '#dc3545'; 
-      case 'Em manutenção': return '#fd7e14'; 
-      case 'Emprestado': return '#6f42c1'; 
-      case 'Para Descarte': return '#6c757d'; 
-      default: return '#17a2b8';
-    }
-  };
-
   return (
     <View style={styles.container}>
       {/* Barra de Pesquisa */}
@@ -101,9 +113,10 @@ export default function ProductListScreen({ navigation }) {
         <Ionicons name="search" size={20} color="#666" style={{marginRight: 10}} />
         <TextInput 
           style={styles.searchInput}
-          placeholder="Buscar patrimônio, modelo, local..."
+          placeholder="Busca universal (Local, i3, Dell...)"
           value={searchText}
           onChangeText={setSearchText}
+          autoCapitalize="none"
         />
         {searchText.length > 0 && (
           <TouchableOpacity onPress={() => setSearchText('')}>
@@ -112,7 +125,7 @@ export default function ProductListScreen({ navigation }) {
         )}
       </View>
 
-      {/* ÁREA DE FILTROS (Rolagem Vertical para caber os dois filtros) */}
+      {/* ÁREA DE FILTROS */}
       <View style={{ maxHeight: 110, paddingBottom: 10 }}>
         
         {/* Filtro 1: TIPO */}
@@ -155,12 +168,10 @@ export default function ProductListScreen({ navigation }) {
 
       </View>
 
-      {/* Lista de Produtos */}
       {loading ? (
         <ActivityIndicator size="large" color="#00184F" style={{marginTop: 50}} />
       ) : (
         <>
-          {/* NOVO: CONTADOR DE RESULTADOS */}
           <Text style={styles.resultsCount}>
             Total de equipamentos encontrados: {filteredProducts.length}
           </Text>
@@ -193,7 +204,6 @@ export default function ProductListScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f2f2f2' },
   
-  // Estilo do Contador
   resultsCount: {
     paddingHorizontal: 15,
     marginTop: 5,
@@ -201,10 +211,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
     color: '#00184F',
-    textAlign: 'right' // Joga o texto pro canto direito pra ficar elegante
+    textAlign: 'right' 
   },
-
-  card: { backgroundColor: 'white'},
 
   searchContainer: {
     flexDirection: 'row',
@@ -225,7 +233,7 @@ const styles = StyleSheet.create({
   
   chip: { paddingVertical: 6, paddingHorizontal: 12, backgroundColor: '#e0e0e0', borderRadius: 15, marginRight: 8 },
   chipSelected: { backgroundColor: '#00184F' },
-  statusChipSelected: { backgroundColor: '#007BFF' }, // Cor diferente para diferenciar do filtro de tipo
+  statusChipSelected: { backgroundColor: '#007BFF' }, 
   chipText: { color: '#333', fontSize: 13, fontWeight: '500' },
   chipTextSelected: { color: 'white' },
 
@@ -244,5 +252,4 @@ const styles = StyleSheet.create({
   editadoPor: { fontSize: 12, color: '#888', fontStyle: 'italic' },
 
   fab: { position: 'absolute', right: 20, bottom: 20, width: 60, height: 60, borderRadius: 30, backgroundColor: '#00184F', alignItems: 'center', justifyContent: 'center', elevation: 5, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 5, shadowOffset: {width: 0, height: 3} },
-    
 });

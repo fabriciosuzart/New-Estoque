@@ -34,14 +34,17 @@ export default function ProductFormScreen({ route, navigation }) {
 
   const handleSave = async () => {
     const tipoFinal = tipo === 'Outro' ? tipoOutro : tipo;
+    
+    // VACINA: Força letra maiúscula e arranca espaços em branco (trim) do início e do fim
+    const patrimonioLimpo = patrimonio ? patrimonio.toUpperCase().trim() : '';
 
-    if (!tipoFinal || !modelo || !local || !patrimonio) {
+    if (!tipoFinal || !modelo || !local || !patrimonioLimpo) {
       Alert.alert("Atenção", "Preencha Patrimônio, Tipo, Modelo e Local.");
       return;
     }
 
     const dadosParaSalvar = {
-      patrimonio,
+      patrimonio: patrimonioLimpo,
       tipo: tipoFinal,
       marca,
       modelo,
